@@ -136,6 +136,83 @@ def Mutation(individual, prob, target_schedule, max_blocks_per_individual):
             new_start_time = random.choice(target_schedule)
             individual.schedule[idx] = new_start_time
 
+def Dominate(ind1, ind2):
+    """
+    Checks if individual one dominates individual two
+
+    Parameters:
+        - ind1: the first Individual
+        - ind2: the second Individual
+
+    Returns:
+        - boolean vlaue of whether individual one dominated individual two
+    """
+    not_worse = all(x <= y for x, y in zip(ind1.fitness, ind2.fitness))
+    better = any(x < y for x, y in zip(ind1.fitness, ind2.fitness))
+    return not_worse and better
+
+def FastNonDominatedSort(population):
+    """
+    Rank the population based on non-domination levels. The first front contains non-dominated individuals
+    The second front contains individuals dominated by the individuals from the first front and so on
+
+    Parameters:
+        - population: the population of individuals
+
+    Returns:
+        - A list of lists, containing the individuals that make up each front
+    """
+    fronts = [[]]
+    for p in population:
+        p.domination_count = 0
+        p.dominated_solutions = []
+        for q in population:
+            if Dominate(p, q):
+                p.dominated_solutions.append(q)
+            elif Dominate(q, p):
+                p.domination_count += 1
+        if p.domination_count == 0:
+            p.front = 0
+            fronts[0].append(p)
+    
+    i = 0
+    while fronts[i]:
+        next_front = []
+        for p in fronts[i]:
+            for q in p.dominated_solutions:
+                q.domination_count -= 1
+                if q.domination_count == 0:
+                    q.front = i + 1
+                    next_front.append(q)
+        i += 1
+        fronts.append(next_front)
+    return fronts[:-1]
+
+
+def CrowdingDistance(front):
+    """
+    It measures how close an individual is to its neighbors. It helps in maintaining diversity in the population
+    
+    Parameters:
+        - front: list containing the individuals that belong to a specific front
+    
+    Returns:
+        - null, changes the value crowding_distance of each individual within the received front
+    """
+    l = len(front)
+    for ind in front:
+        ind.crowding_distance = 0
+    
+    for m in range(len(front[0].fitness)):
+        front = sorted(front, key=lambda x: x.fitness[m])
+        front[0].crowding_distance = float('inf')
+        front[-1].crowding_distance = float('inf')
+        f_max = front[-1].fitness[m]
+        f_min = front[0].fitness[m]
+        for i in range(1, l - 1):
+            front[i].crowding_distance += (front[i + 1].fitness[m] - front[i - 1].fitness[m]) / (f_max - f_min)
+
+
 
 def main():
     """
