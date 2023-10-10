@@ -64,6 +64,15 @@ def _initialize_population(pop_size, target_schedule, max_blocks_per_individual,
     return population
 
 def BinarySelectionTournament(population):
+    """
+    Gets two random samples from the populations and sees which one has a better front or crowding distance
+
+    Parameters:
+        - population: the population of individuals
+
+    Returns:
+        - a list of better suited individuals
+    """
     offspring = []
     while len(offspring) < len(population):
         candidates = random.sample(population, 2)
@@ -78,6 +87,17 @@ def BinarySelectionTournament(population):
 
 
 def Crossover(parent1, parent2):
+    """
+    Makes a crossover between two parents to create two offsprings
+
+    Parameter:
+        - parent1: an instance of an Individual solution 
+        - parent2: an instance of an Individual solution  
+
+    Returns:
+        - Creates two new offspring individuals which contain attributes of the two parents. 
+    """
+
     # Single point crossover for the starting times
     crossover_point = random.randint(0, len(parent1.schedule))
     child1_schedule = parent1.schedule[:crossover_point] + parent2.schedule[crossover_point:]
@@ -85,6 +105,37 @@ def Crossover(parent1, parent2):
 
     # Create the child individuals and return
     return Individual(child1_schedule), Individual(child2_schedule)
+
+
+def Mutation(individual, prob, target_schedule, max_blocks_per_individual):
+    """
+    Created a mutation in an individual based on probability
+
+    Parameters:
+        - individual: an instance of a possible solution
+        - prob: probability of a crossover
+        - target_schedule: list of the times an ideal line should cover
+        - max_blocks_per_individual: maximum number of blocks an individual should have
+
+    Returns:
+        - Null, creates a mutation within the individual received
+    """
+    if random.random() < prob:
+        mutation_type = random.choice(['add', 'remove', 'modify'])
+
+        if mutation_type == 'add' and len(individual.schedule) < max_blocks_per_individual:
+            new_start_time = random.choice(target_schedule)
+            if new_start_time not in individual.schedule:
+                individual.schedule.append(new_start_time)
+
+        elif mutation_type == 'remove' and len(individual.schedule) > 1:  # Ensuring we don't have empty schedules
+            individual.schedule.remove(random.choice(individual.schedule))
+
+        elif mutation_type == 'modify':
+            idx = random.randrange(len(individual.schedule))
+            new_start_time = random.choice(target_schedule)
+            individual.schedule[idx] = new_start_time
+
 
 def main():
     """
@@ -102,7 +153,7 @@ def main():
     target_schedule = list(range(300, 1440, 15)) + list(range(0, 70, 15))
 
     # Initialize the population
-    population = initialize_population(pop_size, target_schedule, max_blocks_per_individual, max_block_length)
+    population = _initialize_population(pop_size, target_schedule, max_blocks_per_individual, max_block_length)
 
     # Evaluate objectives for the initial population
     for individual in population:
