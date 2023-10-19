@@ -1,4 +1,7 @@
 import random
+import copy
+import matplotlib.pyplot as plt
+
 
 class Individual:
     def __init__(self, blocks):
@@ -18,6 +21,20 @@ class Individual:
         num_blocks = len(self.blocks)
 
         self.fitness = [uncovered_times, num_blocks]
+
+def _minutes_to_time(minutes):
+    """
+    Convert minutes after midnight to hour:minute format.
+    
+    Parameters:
+        - minute: Minutes after midnight format
+        
+    Returns:
+        - A string in hour:minute format
+    """
+    hours = minutes // 60
+    mins = minutes % 60
+    return f"{hours:02}:{mins:02}"
 
 
 def _generate_random_block(target_schedule, max_block_length):
@@ -82,7 +99,8 @@ def BinarySelectionTournament(population):
             winner = candidates[1]
         else:
             winner = candidates[0] if candidates[0].crowding_distance > candidates[1].crowding_distance else candidates[1]
-        offspring.append(winner)
+        #offspring.append(winner)
+        offspring.append(copy.deepcopy(winner))
     return offspring
 
 
@@ -95,27 +113,26 @@ def Crossover(parent1, parent2):
         - parent2: an instance of an Individual solution  
 
     Returns:
-        - Creates two new offspring individuals which contain attributes of the two parents. 
+        - Two new offspring individuals which contain attributes of the two parents. 
     """
+    crossover_point = random.randint(0, len(parent1.blocks))
+    child1_blocks = parent1.blocks[:crossover_point] + parent2.blocks[crossover_point:]
+    child2_blocks = parent2.blocks[:crossover_point] + parent1.blocks[crossover_point:]
 
-    # Single point crossover for the starting times
-    crossover_point = random.randint(0, len(parent1.schedule))
-    child1_schedule = parent1.schedule[:crossover_point] + parent2.schedule[crossover_point:]
-    child2_schedule = parent2.schedule[:crossover_point] + parent1.schedule[crossover_point:]
-
-    # Create the child individuals and return
-    return Individual(child1_schedule), Individual(child2_schedule)
+    return Individual(child1_blocks), Individual(child2_blocks)
 
 
-def Mutation(individual, prob, target_schedule, max_blocks_per_individual):
+
+def Mutation(individual, prob, target_schedule, max_blocks_per_individual, max_block_length):
     """
-    Created a mutation in an individual based on probability
+    Creates a mutation in an individual based on probability
 
     Parameters:
         - individual: an instance of a possible solution
-        - prob: probability of a crossover
+        - prob: probability of a mutation
         - target_schedule: list of the times an ideal line should cover
         - max_blocks_per_individual: maximum number of blocks an individual should have
+        - max_block_length: maximum length a single block should have
 
     Returns:
         - Null, creates a mutation within the individual received
@@ -123,18 +140,21 @@ def Mutation(individual, prob, target_schedule, max_blocks_per_individual):
     if random.random() < prob:
         mutation_type = random.choice(['add', 'remove', 'modify'])
 
-        if mutation_type == 'add' and len(individual.schedule) < max_blocks_per_individual:
-            new_start_time = random.choice(target_schedule)
-            if new_start_time not in individual.schedule:
-                individual.schedule.append(new_start_time)
+        # Add a new block to the individual's blocks
+        if mutation_type == 'add' and len(individual.blocks) < max_blocks_per_individual:
+            new_block = _generate_random_block(target_schedule, max_block_length)
+            individual.blocks.append(new_block)
 
-        elif mutation_type == 'remove' and len(individual.schedule) > 1:  # Ensuring we don't have empty schedules
-            individual.schedule.remove(random.choice(individual.schedule))
+        # Remove a random block from the individual's blocks
+        elif mutation_type == 'remove' and len(individual.blocks) > 1:  # Ensuring we don't have empty schedules
+            individual.blocks.remove(random.choice(individual.blocks))
 
+        # Modify a random block in the individual's blocks
         elif mutation_type == 'modify':
-            idx = random.randrange(len(individual.schedule))
-            new_start_time = random.choice(target_schedule)
-            individual.schedule[idx] = new_start_time
+            idx = random.randrange(len(individual.blocks))
+            new_block = _generate_random_block(target_schedule, max_block_length)
+            individual.blocks[idx] = new_block
+
 
 def Dominate(ind1, ind2):
     """
@@ -202,15 +222,20 @@ def CrowdingDistance(front):
     l = len(front)
     for ind in front:
         ind.crowding_distance = 0
-    
+
     for m in range(len(front[0].fitness)):
         front = sorted(front, key=lambda x: x.fitness[m])
         front[0].crowding_distance = float('inf')
         front[-1].crowding_distance = float('inf')
         f_max = front[-1].fitness[m]
         f_min = front[0].fitness[m]
-        for i in range(1, l - 1):
-            front[i].crowding_distance += (front[i + 1].fitness[m] - front[i - 1].fitness[m]) / (f_max - f_min)
+        if f_max == f_min:  # Prevents division by zero
+            for i in range(1, l - 1):
+                front[i].crowding_distance += 0
+        else:
+            for i in range(1, l - 1):
+                front[i].crowding_distance += (front[i + 1].fitness[m] - front[i - 1].fitness[m]) / (f_max - f_min)
+
 
 
 
@@ -220,7 +245,7 @@ def main():
     """
     # Parameters
     pop_size = 100
-    generations = 500
+    generations = 200
     crossover_prob = 0.9
     mutation_prob = 0.1
     max_blocks_per_individual = 10  # Maximum number of blocks an individual can have
@@ -228,6 +253,11 @@ def main():
 
     # Target Schedule
     target_schedule = list(range(300, 1440, 15)) + list(range(0, 70, 15))
+    print(f"Target_schedule: {target_schedule}\n")
+    formatted_schedule = [_minutes_to_time(minute) for minute in target_schedule]
+    print(f"Formatted Target Schedule: {formatted_schedule}\n")
+    print(f"{len(target_schedule)} start times in the target schedule\n")
+
 
     # Initialize the population
     population = _initialize_population(pop_size, target_schedule, max_blocks_per_individual, max_block_length)
@@ -235,6 +265,12 @@ def main():
     # Evaluate objectives for the initial population
     for individual in population:
         individual.evaluate_objectives(target_schedule)
+
+    # Initial status print
+    best_initial = min(population, key=lambda x: sum(x.fitness))
+    worst_initial = max(population, key=lambda x: sum(x.fitness))
+    print(f"Initial best objectives: {best_initial.fitness}")
+    print(f"Initial worst objectives: {worst_initial.fitness}\n")
     
     for generation in range(generations):
         # Selection
@@ -244,8 +280,8 @@ def main():
         for i in range(0, len(offspring) - 1, 2):  # ensuring we have pairs of offspring
             if random.random() < crossover_prob:
                 offspring[i], offspring[i + 1] = Crossover(offspring[i], offspring[i + 1])
-            Mutation(offspring[i], mutation_prob, target_schedule, max_blocks_per_individual)
-            Mutation(offspring[i + 1], mutation_prob, target_schedule, max_blocks_per_individual)
+            Mutation(offspring[i], mutation_prob, target_schedule, max_blocks_per_individual, max_block_length)
+            Mutation(offspring[i + 1], mutation_prob, target_schedule, max_blocks_per_individual, max_block_length)
 
         # Objective Function Evaluation for offspring
         for individual in offspring:
@@ -273,6 +309,24 @@ def main():
 
         population = next_gen_population
 
+        # Status print at the end of the generation
+        best_current = min(population, key=lambda x: sum(x.fitness))
+        print(f"Generation {generation + 1}: Best objectives - {best_current.fitness}")
+        first_front = [ind for ind in population if ind.front == 0]
+        print(f"Number of individuals in the first Pareto front: {len(first_front)}\n")
+
+
+    # Visualization at the end
+    plt.figure(figsize=(10, 6))
+    objectives_1 = [ind.fitness[0] for ind in population]
+    objectives_2 = [ind.fitness[1] for ind in population]
+    plt.scatter(objectives_1, objectives_2, marker='o')
+    plt.title('Objective space')
+    plt.xlabel('Objective 1: Uncovered start times')
+    plt.ylabel('Objective 2: Number of blocks (drivers)')
+    plt.grid(True)
+    plt.show()
+    
 
 if __name__ == "__main__":
     main()
