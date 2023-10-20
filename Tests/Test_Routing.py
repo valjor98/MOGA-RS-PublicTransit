@@ -1,0 +1,36 @@
+import sys
+import os
+
+# Add the project's root directory to sys.path
+script_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.abspath(os.path.join(script_dir, ".."))
+sys.path.insert(0, project_root)
+
+
+from Routing.Graph import Graph
+from Routing.Node import Node
+from Routing.Edge import Edge
+
+
+graph = Graph()
+
+# Add nodes
+for i in range(1, 6):
+    graph.add_node(Node(i))
+
+# Add edges
+graph.add_edge(Edge(1, 2, 2))
+graph.add_edge(Edge(1, 3, 4))
+graph.add_edge(Edge(2, 3, 1))
+graph.add_edge(Edge(2, 4, 7))
+graph.add_edge(Edge(3, 4, 3))
+graph.add_edge(Edge(3, 5, 5))
+graph.add_edge(Edge(4, 5, 7))
+
+# Find k shortest paths
+k_shortest_paths = graph.yen_k_shortest_paths(1, 5, K=3)
+
+# Display k shortest paths
+print("K shortest paths:")
+for i, path in enumerate(k_shortest_paths):
+    print(f"{i+1}: {path}")
