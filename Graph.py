@@ -30,3 +30,38 @@ class Graph:
                         heappush(priority_queue, (distance, edge.end_node))
 
         return distances[end_node_id]
+
+    def yen_k_shortest_paths(self, start_node_id, end_node_id, K=3):
+        A = []  # Holds the k shortest paths
+        B = []  # Candidate paths
+        
+        # 1. Find the shortest path from start to end
+        initial_path = self.dijkstra(start_node_id, end_node_id)
+        A.append(initial_path)
+        
+        # 3. Main loop for k = 1 to K
+        for k in range(1, K):
+            # 3.1 For each node n in the k-1th shortest path
+            for i in range(len(A[-1]) - 1):
+                spur_node = A[-1][i]
+                root_path = A[-1][:i]
+                
+                # 3.1.3 Remove all nodes in root path from the graph
+                self.remove_nodes(root_path)
+                
+                # 3.1.4 Find the spur path
+                spur_path = self.dijkstra(spur_node, end_node_id)
+                
+                # 3.1.6 Concatenate root and spur paths
+                total_path = root_path + spur_path
+                
+                # 3.1.7 Add the new path to B
+                if total_path not in A and total_path not in B:
+                    heappush(B, total_path)
+            
+            # 3.2 Add the shortest path in B to A
+            if B:
+                shortest_path_B = heappop(B)
+                A.append(shortest_path_B)
+                
+        return A
