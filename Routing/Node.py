@@ -1,5 +1,5 @@
 class Node:
-    def __init__(self, id, latitude, longitude, priority, zone_type, congestion, transfer_opp):
+    def __init__(self, id, latitude=0, longitude=0, priority=0, zone_type=0, congestion=0, transfer_opp=0):
         self.id = id                        # Unique identifier for the node
         self.latitude = latitude            # Latitude coordinate
         self.longitude = longitude          # Longitude coordinate
