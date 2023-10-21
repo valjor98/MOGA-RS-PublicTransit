@@ -1,4 +1,5 @@
 from heapq import heappop, heappush
+from Routing.Edge import Edge
 
 class Graph:
     def __init__(self):
@@ -38,11 +39,6 @@ class Graph:
         # Initialization of the priority queue
         priority_queue = [(0, start_node_id)]
 
-        # Debug: Print initial conditions
-        # print("Initial distances:", distances)
-        # print("Initial priority queue:", priority_queue)
-
-
         # As long as priority queue is not empty
         while priority_queue:
             # The node with the smallest distance is popped from the priority queue
@@ -51,28 +47,20 @@ class Graph:
             if current_distance > distances[current_node_id]:
                 continue
 
-            # Debug: Print current node processing
-            # print("Processing node:", current_node_id)
-
 
             # for each edge that starts with the current node
             for edge in self.edges:
                 # if the start node of that particular edge is our current node
-                if edge.start_node == current_node_id and edge.end_node not in self.removed_nodes:
+                if edge.start_node == current_node_id and edge.end_node not in self.removed_nodes and (edge.start_node, edge.end_node) not in self.removed_edges:
                     # sum the smallest known distance to the current node and the weight of the edge
                     distance = current_distance + edge.weight
                     # check if the new distance is smaller than the currently known shortest distance to the end node of the edge
                     if distance < distances[edge.end_node]:
                         # update shortest known distance
                         distances[edge.end_node] = distance
-                        # 
                         previous_nodes[edge.end_node] = current_node_id
                         # push to priority queue
                         heappush(priority_queue, (distance, edge.end_node))
-
-            # Debug: Print updated distances and priority queue
-            # print("Updated distances:", distances)
-            # print("Updated priority queue:", priority_queue)
 
         # Construct the shortest path
         path = []
@@ -81,7 +69,7 @@ class Graph:
             path.insert(0, current)
             current = previous_nodes[current]
 
-        return path if path[0] == start_node_id else []
+        return path if path[0] == start_node_id else None
 
 
     def yen_k_shortest_paths(self, start_node_id, end_node_id, K=3):
@@ -97,32 +85,38 @@ class Graph:
         for k in range(1, K):
             # For each node n in the k-1th shortest path
             for i in range(len(A[-1]) - 1):
+                root_path = A[-1][:i+1]
                 spur_node = A[-1][i]
-                root_path = A[-1][:i]
 
                 print("Spur Node:", spur_node)
                 print("Root Path:", root_path)
 
                 # Remove all nodes in root path from the graph
-                self.remove_nodes(root_path)
+                self.remove_nodes(root_path[:-1])
                 print("Removed Nodes:", self.removed_nodes)
+
+                for path in A:
+                    if path[:i+1] == root_path:
+                        self.remove_edge(Edge(path[i], path[i+1], 0))
+
                 # find spur paths
                 spur_path = self.dijkstra(spur_node, end_node_id)
                 print("Spur Path:", spur_path)
+
                 # restore the nodes of the graph
                 self.restore_nodes()
+                self.restore_edges()
                 print("Restored Nodes:", self.removed_nodes)
 
                 if spur_path:
                     # Concatenate root and spur paths
-                    total_path = root_path + spur_path[1:]
+                    total_path = root_path[:-1] + spur_path
                     # Add the new path to B
                     if total_path not in A and total_path not in B:
-                        heappush(B, total_path)
+                        heappush(B, (total_path))
 
                 print("Current A paths:", A)
                 print("Current B paths:", B)
-                print("-----------------------")
 
 
             # Add the shortest path in B to A
@@ -131,3 +125,17 @@ class Graph:
                 A.append(shortest_path_B)
                 
         return A
+    
+    def path_cost(self, path):
+        cost = 0
+        for i in range(len(path) - 1):
+            for edge in self.edges:
+                if edge.start_node == path[i] and edge.end_node == path[i + 1]:
+                    cost += edge.weight
+                    break
+        return cost
+
+    def print_paths_with_costs(self, paths):
+        for i, path in enumerate(paths):
+            cost = self.path_cost(path)
+            print(f"Path {i+1}: {path} with total cost {cost}")
