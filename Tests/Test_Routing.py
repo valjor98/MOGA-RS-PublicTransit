@@ -27,10 +27,6 @@ graph.add_edge(Edge(3, 4, 3))
 graph.add_edge(Edge(3, 5, 5))
 graph.add_edge(Edge(4, 5, 7))
 
-# Find k shortest paths
-k_shortest_paths = graph.yen_k_shortest_paths(1, 5, K=3)
-
-# Display k shortest paths
-print("K shortest paths:")
-for i, path in enumerate(k_shortest_paths):
-    print(f"{i+1}: {path}")
+print("K-shortest paths:")
+k_shortest_paths = graph.yen_k_shortest_paths(1, 5, K=5)
+graph.print_paths_with_costs(k_shortest_paths)
