@@ -17,8 +17,14 @@ class Graph:
     def remove_nodes(self, node_ids):
         self.removed_nodes = set(node_ids)
 
+    def remove_edge(self, edge):
+        self.removed_edges.add((edge.start_node, edge.end_node))
+
     def restore_nodes(self):
         self.removed_nodes = set()
+
+    def restore_edges(self):
+        self.removed_edges = set()
 
 
     # O(nlogn + mlogn)
@@ -31,7 +37,12 @@ class Graph:
         distances[start_node_id] = 0
         # Initialization of the priority queue
         priority_queue = [(0, start_node_id)]
-        
+
+        # Debug: Print initial conditions
+        # print("Initial distances:", distances)
+        # print("Initial priority queue:", priority_queue)
+
+
         # As long as priority queue is not empty
         while priority_queue:
             # The node with the smallest distance is popped from the priority queue
@@ -39,6 +50,11 @@ class Graph:
             # if the current's node distance is greater than the smallest known distance to this noce, we skip it
             if current_distance > distances[current_node_id]:
                 continue
+
+            # Debug: Print current node processing
+            # print("Processing node:", current_node_id)
+
+
             # for each edge that starts with the current node
             for edge in self.edges:
                 # if the start node of that particular edge is our current node
@@ -53,6 +69,10 @@ class Graph:
                         previous_nodes[edge.end_node] = current_node_id
                         # push to priority queue
                         heappush(priority_queue, (distance, edge.end_node))
+
+            # Debug: Print updated distances and priority queue
+            # print("Updated distances:", distances)
+            # print("Updated priority queue:", priority_queue)
 
         # Construct the shortest path
         path = []
@@ -79,12 +99,19 @@ class Graph:
             for i in range(len(A[-1]) - 1):
                 spur_node = A[-1][i]
                 root_path = A[-1][:i]
+
+                print("Spur Node:", spur_node)
+                print("Root Path:", root_path)
+
                 # Remove all nodes in root path from the graph
                 self.remove_nodes(root_path)
+                print("Removed Nodes:", self.removed_nodes)
                 # find spur paths
                 spur_path = self.dijkstra(spur_node, end_node_id)
+                print("Spur Path:", spur_path)
                 # restore the nodes of the graph
                 self.restore_nodes()
+                print("Restored Nodes:", self.removed_nodes)
 
                 if spur_path:
                     # Concatenate root and spur paths
@@ -92,6 +119,11 @@ class Graph:
                     # Add the new path to B
                     if total_path not in A and total_path not in B:
                         heappush(B, total_path)
+
+                print("Current A paths:", A)
+                print("Current B paths:", B)
+                print("-----------------------")
+
 
             # Add the shortest path in B to A
             if B:
