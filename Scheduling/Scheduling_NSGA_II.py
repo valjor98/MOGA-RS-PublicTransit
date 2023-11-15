@@ -239,25 +239,23 @@ def CrowdingDistance(front):
 
 
 
-def main():
+def NSGA_II(pop_size, generations, crossover_prob, mutation_prob, max_blocks_per_individual, max_block_length, target_schedule):
     """
     Main execution of the NSGA-II algorithm for the scheduling problem.
+
+    Parameters:
+        - pop_size: Size of the population.
+        - generations: Number of generations to run.
+        - crossover_prob: Probability of crossover.
+        - mutation_prob: Probability of mutation.
+        - max_blocks_per_individual: Maximum number of blocks per individual.
+        - max_block_length: Maximum length of each block.
+        - target_schedule: List of target start times.
+        - Final population and other metrics of interest
+
+    Returns:
+        - 
     """
-    # Parameters
-    pop_size = 100
-    generations = 200
-    crossover_prob = 0.9
-    mutation_prob = 0.1
-    max_blocks_per_individual = 10  # Maximum number of blocks an individual can have
-    max_block_length = 5  # Maximum length of each block
-
-    # Target Schedule
-    target_schedule = list(range(300, 1440, 15)) + list(range(0, 70, 15))
-    print(f"Target_schedule: {target_schedule}\n")
-    formatted_schedule = [_minutes_to_time(minute) for minute in target_schedule]
-    print(f"Formatted Target Schedule: {formatted_schedule}\n")
-    print(f"{len(target_schedule)} start times in the target schedule\n")
-
 
     # Initialize the population
     population = _initialize_population(pop_size, target_schedule, max_blocks_per_individual, max_block_length)
@@ -315,18 +313,18 @@ def main():
         first_front = [ind for ind in population if ind.front == 0]
         print(f"Number of individuals in the first Pareto front: {len(first_front)}\n")
 
+        return population, best_current
 
-    # Visualization at the end
-    plt.figure(figsize=(10, 6))
-    objectives_1 = [ind.fitness[0] for ind in population]
-    objectives_2 = [ind.fitness[1] for ind in population]
-    plt.scatter(objectives_1, objectives_2, marker='o')
-    plt.title('Objective space')
-    plt.xlabel('Objective 1: Uncovered start times')
-    plt.ylabel('Objective 2: Number of blocks (drivers)')
-    plt.grid(True)
-    plt.show()
     
 
+
 if __name__ == "__main__":
-    main()
+    final_population, best, worst = NSGA_II(
+        pop_size=100,
+        generations=200,
+        crossover_prob=0.9,
+        mutation_prob=0.1,
+        max_blocks_per_individual=10,
+        max_block_length=5,
+        target_schedule=list(range(300, 1440, 15)) + list(range(0, 70, 15))
+    )
