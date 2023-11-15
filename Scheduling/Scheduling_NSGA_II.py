@@ -316,10 +316,26 @@ def NSGA_II(pop_size, generations, crossover_prob, mutation_prob, max_blocks_per
         return population, best_current
 
     
+def plot_pareto_front(objectives_1, objectives_2):
+    """
+    Plots the Pareto front of the objectives
+
+    Parameters:
+        - objectives_1: First objective values of the population.
+        - objectives_2: Second objective values of the population.
+    """
+
+    plt.figure(figsize=(10, 6))
+    plt.scatter(objectives_1, objectives_2, marker='o')
+    plt.title('Objective space')
+    plt.xlabel('Objective 1: Uncovered start times')
+    plt.ylabel('Objective 2: Number of blocks (drivers)')
+    plt.grid(True)
+    plt.show()
 
 
 if __name__ == "__main__":
-    final_population, best, worst = NSGA_II(
+    final_population, best = final_population, best, worst = NSGA_II(
         pop_size=100,
         generations=200,
         crossover_prob=0.9,
@@ -328,3 +344,7 @@ if __name__ == "__main__":
         max_block_length=5,
         target_schedule=list(range(300, 1440, 15)) + list(range(0, 70, 15))
     )
+    objectives_1 = [ind.fitness[0] for ind in final_population]
+    objectives_2 = [ind.fitness[1] for ind in final_population]
+    plot_pareto_front(objectives_1, objectives_2)
+
