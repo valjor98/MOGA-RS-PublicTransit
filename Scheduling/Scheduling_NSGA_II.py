@@ -9,8 +9,19 @@ class Individual:
         self.fitness = []  # List to store the objective values
         self.front = 0
         self.crowding_distance = 0
+        self.route = [] # List to store the list of node is of a route
 
-    def evaluate_objectives(self, target_schedule):
+    def _calculate_route_cost(self, node_attributes):
+        # Calculate the cost of the route based on node attributes
+        weight1 = 0.1
+        weight2 = 0.2
+        cost = 0
+        for node_id in self.route:
+            node = node_attributes[node_id]
+            cost += node.priority * weight1 + node.zone_type * weight2
+        return cost
+
+    def evaluate_objectives(self, target_schedule, node_attributes):
         # Flatten the blocks to get all start times
         all_start_times = [time for block in self.blocks for time in block]
 
@@ -19,6 +30,9 @@ class Individual:
 
         # Objective 2: Number of blocks (drivers)
         num_blocks = len(self.blocks)
+
+        # Objective 3: Route Cost
+        self.route_cost = self._calculate_route_cost(node_attributes)
 
         self.fitness = [uncovered_times, num_blocks]
 
@@ -313,7 +327,7 @@ def NSGA_II(pop_size, generations, crossover_prob, mutation_prob, max_blocks_per
         first_front = [ind for ind in population if ind.front == 0]
         print(f"Number of individuals in the first Pareto front: {len(first_front)}\n")
 
-        return population, best_current
+    return population, best_current
 
     
 def plot_pareto_front(objectives_1, objectives_2):
@@ -335,7 +349,7 @@ def plot_pareto_front(objectives_1, objectives_2):
 
 
 if __name__ == "__main__":
-    final_population, best = final_population, best, worst = NSGA_II(
+    final_population, best = NSGA_II(
         pop_size=100,
         generations=200,
         crossover_prob=0.9,
