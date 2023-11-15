@@ -145,10 +145,10 @@ class Graph:
         Retrieve information for a list of node IDs
 
         Parameters:
-            - node_ids: List of node IDs
+            - node_ids: node ID
         
         Return: 
-            - List of node objects or their attributes
+            - node objects
         """
         node = self.nodes.get(node_id)
 
