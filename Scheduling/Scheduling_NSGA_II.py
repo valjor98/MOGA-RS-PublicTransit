@@ -1,15 +1,15 @@
 import random
 import copy
 import matplotlib.pyplot as plt
-
+from mpl_toolkits.mplot3d import Axes3D
 
 class Individual:
-    def __init__(self, blocks):
+    def __init__(self, blocks, route):
         self.blocks = blocks  # List of lists, where each sublist is a block of start times
         self.fitness = []  # List to store the objective values
         self.front = 0
         self.crowding_distance = 0
-        self.route = [] # List to store the list of node is of a route
+        self.route = route # List to store the list of node is of a route
 
     def _calculate_route_cost(self, node_attributes):
         # Calculate the cost of the route based on node attributes
@@ -18,10 +18,10 @@ class Individual:
         cost = 0
         for node_id in self.route:
             node = node_attributes[node_id]
-            cost += node.priority * weight1 + node.zone_type * weight2
+            cost += (node.priority * weight1) + (node.zone_type * weight2)
         return cost
 
-    def evaluate_objectives(self, target_schedule, node_attributes):
+    def evaluate_objectives(self, target_schedule, node_attributes=None):
         # Flatten the blocks to get all start times
         all_start_times = [time for block in self.blocks for time in block]
 
@@ -31,10 +31,12 @@ class Individual:
         # Objective 2: Number of blocks (drivers)
         num_blocks = len(self.blocks)
 
-        # Objective 3: Route Cost
-        self.route_cost = self._calculate_route_cost(node_attributes)
-
         self.fitness = [uncovered_times, num_blocks]
+
+        # Objective 3: Cost of Routes
+        if self.route:
+            route_cost = self._calculate_route_cost(node_attributes)
+            self.fitness.append(route_cost)
 
 def _minutes_to_time(minutes):
     """
@@ -76,7 +78,7 @@ def _generate_random_block(target_schedule, max_block_length):
     
     return block
 
-def _initialize_population(pop_size, target_schedule, max_blocks_per_individual, max_block_length):
+def _initialize_population(pop_size, target_schedule, max_blocks_per_individual, max_block_length, k_shortest_paths):
     """
     Helper function to generate an initial population of individual solutions.
 
@@ -85,13 +87,15 @@ def _initialize_population(pop_size, target_schedule, max_blocks_per_individual,
         - target_schedule: list of the times an ideal line should cover
         - max_blocks_per_individual: maximum number of blocks an individual should have
         - max_block_length: maximum length a single block should have
+        - k_shortest_paths: list of the possible routes
     Returns:
         - population: a list containing individual solutions
     """
     population = []
     for _ in range(pop_size):
         individual_schedule = [_generate_random_block(target_schedule, max_block_length) for _ in range(random.randint(1, max_blocks_per_individual))]
-        population.append(Individual(individual_schedule))
+        route = random.choice(k_shortest_paths) if k_shortest_paths else []
+        population.append(Individual(individual_schedule, route))
     return population
 
 def BinarySelectionTournament(population):
@@ -129,15 +133,20 @@ def Crossover(parent1, parent2):
     Returns:
         - Two new offspring individuals which contain attributes of the two parents. 
     """
+    # Crossover for the blocks
     crossover_point = random.randint(0, len(parent1.blocks))
     child1_blocks = parent1.blocks[:crossover_point] + parent2.blocks[crossover_point:]
     child2_blocks = parent2.blocks[:crossover_point] + parent1.blocks[crossover_point:]
 
-    return Individual(child1_blocks), Individual(child2_blocks)
+    # Crossover for the routes
+    child1_route = parent1.route if random.random() < 0.5 else parent2.route
+    child2_route = parent2.route if random.random() < 0.5 else parent1.route
+
+    return Individual(child1_blocks, child1_route), Individual(child2_blocks, child2_route)
 
 
 
-def Mutation(individual, prob, target_schedule, max_blocks_per_individual, max_block_length):
+def Mutation(individual, prob, target_schedule, max_blocks_per_individual, max_block_length, k_shortest_paths=None):
     """
     Creates a mutation in an individual based on probability
 
@@ -147,6 +156,7 @@ def Mutation(individual, prob, target_schedule, max_blocks_per_individual, max_b
         - target_schedule: list of the times an ideal line should cover
         - max_blocks_per_individual: maximum number of blocks an individual should have
         - max_block_length: maximum length a single block should have
+        - k_shortest_paths: list of the possible routes
 
     Returns:
         - Null, creates a mutation within the individual received
@@ -169,6 +179,9 @@ def Mutation(individual, prob, target_schedule, max_blocks_per_individual, max_b
             new_block = _generate_random_block(target_schedule, max_block_length)
             individual.blocks[idx] = new_block
 
+        # Mutation for route
+        if k_shortest_paths and random.random() < prob:
+            individual.route = random.choice(k_shortest_paths)
 
 def Dominate(ind1, ind2):
     """
@@ -253,7 +266,7 @@ def CrowdingDistance(front):
 
 
 
-def NSGA_II(pop_size, generations, crossover_prob, mutation_prob, max_blocks_per_individual, max_block_length, target_schedule):
+def NSGA_II(pop_size, generations, crossover_prob, mutation_prob, max_blocks_per_individual, max_block_length, target_schedule, k_shortest_paths=None):
     """
     Main execution of the NSGA-II algorithm for the scheduling problem.
 
@@ -272,11 +285,11 @@ def NSGA_II(pop_size, generations, crossover_prob, mutation_prob, max_blocks_per
     """
 
     # Initialize the population
-    population = _initialize_population(pop_size, target_schedule, max_blocks_per_individual, max_block_length)
+    population = _initialize_population(pop_size, target_schedule, max_blocks_per_individual, max_block_length, k_shortest_paths)
 
     # Evaluate objectives for the initial population
     for individual in population:
-        individual.evaluate_objectives(target_schedule)
+        individual.evaluate_objectives(target_schedule, k_shortest_paths)
 
     # Initial status print
     best_initial = min(population, key=lambda x: sum(x.fitness))
@@ -297,7 +310,7 @@ def NSGA_II(pop_size, generations, crossover_prob, mutation_prob, max_blocks_per
 
         # Objective Function Evaluation for offspring
         for individual in offspring:
-            individual.evaluate_objectives(target_schedule)
+            individual.evaluate_objectives(target_schedule, k_shortest_paths)
 
         # Combine parent and offspring populations
         combined = population + offspring
@@ -330,22 +343,74 @@ def NSGA_II(pop_size, generations, crossover_prob, mutation_prob, max_blocks_per
     return population, best_current
 
     
-def plot_pareto_front(objectives_1, objectives_2):
+def plot_pareto_front(objectives_1, objectives_2, objectives_3):
     """
     Plots the Pareto front of the objectives
 
     Parameters:
         - objectives_1: First objective values of the population.
         - objectives_2: Second objective values of the population.
+        - objectives_3: Third objective values of the population.
     """
 
-    plt.figure(figsize=(10, 6))
-    plt.scatter(objectives_1, objectives_2, marker='o')
-    plt.title('Objective space')
-    plt.xlabel('Objective 1: Uncovered start times')
-    plt.ylabel('Objective 2: Number of blocks (drivers)')
-    plt.grid(True)
+    fig = plt.figure(figsize=(10, 8))
+    ax = fig.add_subplot(111, projection='3d')
+
+    ax.scatter(objectives_1, objectives_2, objectives_3, marker='o')
+    ax.set_title('3D Objective Space')
+    ax.set_xlabel('Objective 1: Uncovered start times')
+    ax.set_ylabel('Objective 2: Number of blocks (drivers)')
+    ax.set_zlabel('Objective 3: Route Cost')
+    ax.grid(True)
     plt.show()
+
+def plot_pareto_front(population):
+    """
+    Dynamically plots the Pareto front of the objectives in 2D or 3D,
+    depending on the number of objectives.
+
+    Parameters:
+        - population: The population of individuals.
+    """
+
+    if not population:
+        print("Empty population provided for plotting.")
+        return
+
+    num_objectives = len(population[0].fitness)
+
+    if num_objectives == 3:
+        # 3D plotting for three objectives
+        fig = plt.figure(figsize=(10, 8))
+        ax = fig.add_subplot(111, projection='3d')
+        ax.scatter(
+            [ind.fitness[0] for ind in population],
+            [ind.fitness[1] for ind in population],
+            [ind.fitness[2] for ind in population],
+            marker='o'
+        )
+        ax.set_title('3D Objective Space')
+        ax.set_xlabel('Objective 1: Uncovered start times')
+        ax.set_ylabel('Objective 2: Number of blocks (drivers)')
+        ax.set_zlabel('Objective 3: Route Cost')
+    elif num_objectives == 2:
+        # 2D plotting for two objectives
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.scatter(
+            [ind.fitness[0] for ind in population],
+            [ind.fitness[1] for ind in population],
+            marker='o'
+        )
+        ax.set_title('2D Objective Space')
+        ax.set_xlabel('Objective 1: Uncovered start times')
+        ax.set_ylabel('Objective 2: Number of blocks (drivers)')
+    else:
+        print("Unsupported number of objectives for plotting.")
+        return
+
+    ax.grid(True)
+    plt.show()
+
 
 
 if __name__ == "__main__":
@@ -358,7 +423,7 @@ if __name__ == "__main__":
         max_block_length=5,
         target_schedule=list(range(300, 1440, 15)) + list(range(0, 70, 15))
     )
-    objectives_1 = [ind.fitness[0] for ind in final_population]
-    objectives_2 = [ind.fitness[1] for ind in final_population]
-    plot_pareto_front(objectives_1, objectives_2)
+
+    plot_pareto_front(final_population)
+
 
