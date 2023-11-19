@@ -9,7 +9,7 @@ class Individual:
         self.fitness = []  # List to store the objective values
         self.front = 0
         self.crowding_distance = 0
-        self.route = route # List to store the list of node is of a route
+        self.route = route # list of node IDs
 
     def _calculate_route_cost(self, node_attributes):
         # Calculate the cost of the route based on node attributes
@@ -17,8 +17,11 @@ class Individual:
         weight2 = 0.2
         cost = 0
         for node_id in self.route:
-            node = node_attributes[node_id]
-            cost += (node.priority * weight1) + (node.zone_type * weight2)
+            node = node_attributes.get(node_id, None)
+            if node is not None:
+                cost += (node.priority * weight1) + (node.zone_type * weight2)
+            else:
+                print(f"Node ID {node_id} not found in node_attributes")
         return cost
 
     def evaluate_objectives(self, target_schedule, node_attributes=None):
@@ -92,9 +95,10 @@ def _initialize_population(pop_size, target_schedule, max_blocks_per_individual,
         - population: a list containing individual solutions
     """
     population = []
+    population = []
     for _ in range(pop_size):
         individual_schedule = [_generate_random_block(target_schedule, max_block_length) for _ in range(random.randint(1, max_blocks_per_individual))]
-        route = random.choice(k_shortest_paths) if k_shortest_paths else []
+        route = random.choice(k_shortest_paths)  # Randomly select a path
         population.append(Individual(individual_schedule, route))
     return population
 
@@ -266,7 +270,7 @@ def CrowdingDistance(front):
 
 
 
-def NSGA_II(pop_size, generations, crossover_prob, mutation_prob, max_blocks_per_individual, max_block_length, target_schedule, k_shortest_paths=None):
+def NSGA_II(pop_size, generations, crossover_prob, mutation_prob, max_blocks_per_individual, max_block_length, target_schedule, k_shortest_paths=None, node_attributes=None):
     """
     Main execution of the NSGA-II algorithm for the scheduling problem.
 
@@ -283,14 +287,12 @@ def NSGA_II(pop_size, generations, crossover_prob, mutation_prob, max_blocks_per
     Returns:
         - 
     """
-
     # Initialize the population
     population = _initialize_population(pop_size, target_schedule, max_blocks_per_individual, max_block_length, k_shortest_paths)
 
     # Evaluate objectives for the initial population
     for individual in population:
-        individual.evaluate_objectives(target_schedule, k_shortest_paths)
-
+        individual.evaluate_objectives(target_schedule, node_attributes)  # Pass node_attributes here
     # Initial status print
     best_initial = min(population, key=lambda x: sum(x.fitness))
     worst_initial = max(population, key=lambda x: sum(x.fitness))
@@ -310,7 +312,7 @@ def NSGA_II(pop_size, generations, crossover_prob, mutation_prob, max_blocks_per
 
         # Objective Function Evaluation for offspring
         for individual in offspring:
-            individual.evaluate_objectives(target_schedule, k_shortest_paths)
+            individual.evaluate_objectives(target_schedule, node_attributes)
 
         # Combine parent and offspring populations
         combined = population + offspring
