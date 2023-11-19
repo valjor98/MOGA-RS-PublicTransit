@@ -1,12 +1,6 @@
 import sys
 import os
 
-# Add the project's root directory to sys.path
-script_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.abspath(os.path.join(script_dir, ".."))
-sys.path.insert(0, project_root)
-
-
 from Routing.Graph import Graph
 from Routing.Node import Node
 from Routing.Edge import Edge
