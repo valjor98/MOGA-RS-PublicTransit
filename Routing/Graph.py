@@ -139,3 +139,17 @@ class Graph:
         for i, path in enumerate(paths):
             cost = self.path_cost(path)
             print(f"Path {i+1}: {path} with total cost {cost}")
+
+    def get_node(self, node_id):
+        """
+        Retrieve information for a list of node IDs
+
+        Parameters:
+            - node_ids: node ID
+        
+        Return: 
+            - node objects
+        """
+        node = self.nodes.get(node_id)
+
+        return node
