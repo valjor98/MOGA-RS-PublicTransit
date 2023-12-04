@@ -391,7 +391,7 @@ def plot_pareto_front(population):
             [ind.fitness[2] for ind in population],
             marker='o'
         )
-        ax.set_title('3D Objective Space')
+        ax.set_title('3D Pareto Front')
         ax.set_xlabel('Objective 1: Uncovered start times')
         ax.set_ylabel('Objective 2: Number of blocks (drivers)')
         ax.set_zlabel('Objective 3: Route Cost')
@@ -403,7 +403,7 @@ def plot_pareto_front(population):
             [ind.fitness[1] for ind in population],
             marker='o'
         )
-        ax.set_title('2D Objective Space')
+        ax.set_title('2D Pareto Front')
         ax.set_xlabel('Objective 1: Uncovered start times')
         ax.set_ylabel('Objective 2: Number of blocks (drivers)')
     else:
@@ -427,5 +427,3 @@ if __name__ == "__main__":
     )
 
     plot_pareto_front(final_population)
-
-
